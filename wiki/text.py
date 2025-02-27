@@ -1,4 +1,5 @@
 """
+Copyright © 2023 Austin Berrio
 Module: wiki.text
 Description:
     Converts the SDL Wiki from HTML to Markdown, if applicable, otherwise sanitizes existing Markdown.
@@ -142,5 +143,4 @@ if __name__ == "__main__":
     converter.test()
     converter.clone()  # Ensure the repo exists
     converter.convert()
-    converter.concatenate()
     converter.concatenate()
