@@ -4,7 +4,6 @@ Module: wiki.base
 Description: Base class for converting SDL Wiki from HTML to a selected output format.
 """
 
-import os
 import pathlib
 import platform
 import shutil
@@ -12,84 +11,40 @@ import subprocess
 from typing import Any, List
 
 from wiki.logger import AutoLogger
+from wiki.params import WikiParameters
 
 
+# NOTE: Not sure how I want to handle TEXT and PDF file paths just yet.
+# Leaving these here as a reminder to my future self.
 class WikiBase:
-    def __init__(self, repo: str, root: str, _type: str, version: int, verbose: bool):
-        # Use the local path if specified
-        if repo == ".":
-            repo = "libsdl-org/sdlwiki"
-
-        if root == ".":
-            root = os.getcwd()
-
-        # Otherwise, target the repo defined by user
-        self._repo = repo  # The repository path to clone, sync, or reference
-        self._root = root  # The parent path for the current working directory
-        self._type = _type  # The type of conversion process, e.g. text, pdf, man
-        self._version = str(version)  # The version of the docs, e.g. 2 or 3
-        self._verbose = verbose  # Enable debug info
-
-        # Automate Logger config and instance creation
-        self.logger = AutoLogger(self.__class__.__name__, verbose)
-
-    @property
-    def REPO_PATH(self) -> pathlib.Path:
-        return pathlib.Path(self._repo)
-
-    @property
-    def VERSION_PATH(self) -> List[pathlib.Path]:
-        version_map = {
-            "2": ["SDL2", "SDL2_image", "SDL2_mixer", "SDL2_net", "SDL2_ttf"],
-            "3": ["SDL3", "SDL3_image", "SDL3_mixer", "SDL3_net", "SDL3_ttf"],
-        }
-        return [self.REPO_PATH / v for v in version_map[self._version]]
-
-    @property
-    def ROOT_PATH(self) -> pathlib.Path:
-        return pathlib.Path(self._root)
-
-    @property
-    def TEXT_PATH(self) -> pathlib.Path:
-        text_dir = self.ROOT_PATH / "text"
-        text_dir.mkdir(parents=True, exist_ok=True)
-        return text_dir
-
-    @property
-    def PDF_PATH(self) -> pathlib.Path:
-        pdf_dir = self.ROOT_PATH / "pdf"
-        pdf_dir.mkdir(parents=True, exist_ok=True)
-        return pdf_dir
-
-    @property
-    def MAN_PATH(self) -> pathlib.Path:
-        man_dir = self.ROOT_PATH / "man"
-        man_dir.mkdir(parents=True, exist_ok=True)
-        return man_dir
+    def __init__(self, params: WikiParameters):
+        self.params = params
+        self.logger = AutoLogger.create(self.__class__.__name__, params.verbose)
 
     @property
     def TEXT_FILE(self) -> pathlib.Path:
-        return self.TEXT_PATH / f"SDL-Wiki-v{self._version}.md"
+        return self.TEXT_PATH / f"SDL-Wiki-v{self.params.version}.md"
 
     @property
     def PDF_FILE(self) -> pathlib.Path:
-        return self.PDF_PATH / f"SDL-Wiki-v{self._version}.pdf"
+        return self.PDF_PATH / f"SDL-Wiki-v{self.params.version}.pdf"
 
     def log(self) -> None:
-        # OS info
-        self.logger.debug(f"OS Name: {os.name}")
-        self.logger.debug(f"Platform System: {platform.system()}")
-        self.logger.debug(f"Platform Release: {platform.release()}")
-        # User parameters
-        self.logger.debug(f"Conversion Path: {self.ROOT_PATH}")
-        self.logger.debug(f"Conversion Type: {self._type}")
-        self.logger.debug(f"Conversion Version: {self._version}")
-        # Automated parameters
-        self.logger.debug(f"Repository Path: {base.REPO_PATH}")
-        self.logger.debug(f"Version Paths: {base.VERSION_PATH}")
-        self.logger.debug(f"Text Path: {base.TEXT_PATH}")
-        self.logger.debug(f"PDF Path: {base.PDF_PATH}")
-        self.logger.debug(f"Man Path: {base.MAN_PATH}")
+        os_info = {
+            "OS Name": platform.system(),
+            "Platform Release": platform.release(),
+            "Conversion Path": self.params.ROOT_PATH,
+            "Conversion Type": self.params.conversion_type,
+            "Conversion Version": self.params.version,
+            "Repository Path": self.params.REPO_PATH,
+            "Version Paths": self.params.VERSION_PATH,
+            "Text Path": self.params.TEXT_PATH,
+            "PDF Path": self.params.PDF_PATH,
+            "Man Path": self.params.MAN_PATH,
+        }
+
+        for key, value in os_info.items():
+            self.logger.debug(f"{key}: {value}")
 
     def test(self) -> None:
         prerequisites = ["git", "html2text", "pandoc", "xelatex"]
@@ -107,7 +62,10 @@ class WikiBase:
 
         try:
             # Allow caller to handle result
-            return subprocess.run(args, **params)
+            result = subprocess.run(args, **params)
+            self.logger.debug(f"Command succeeded: {args}")
+            self.logger.debug(f"Output: {result.stdout}")
+            return result
         except subprocess.CalledProcessError as e:
             self.logger.error(f"Command failed: {e.cmd}")
             self.logger.error(f"Return code: {e.returncode}")
@@ -116,20 +74,29 @@ class WikiBase:
             exit(1)
 
     def clone(self) -> None:
-        if os.path.exists(self.REPO_PATH):
+        repo_dir = self.params.REPO_PATH
+        if repo_dir.exists():
             self.logger.debug("SDL Wiki directory already exists. Pulling latest changes...")
-            args = ["git", "-C", self.REPO_PATH, "pull", "origin", "main"]
+            args = ["git", "-C", str(repo_dir), "pull", "origin", "main"]
         else:
             self.logger.debug("Cloning SDL Wiki repository...")
-            args = ["git", "clone", f"https://github.com/{self.REPO_PATH}", self.REPO_PATH]
+            repo_url = f"https://github.com/{self.params.repo}"
+            args = ["git", "clone", repo_url, str(repo_dir)]
         self.run(args)
         self.logger.info("SDL Wiki repository is up to date.")
 
 
 if __name__ == "__main__":
-    base = WikiBase(repo=".", root=".", _type="text", version="2", verbose=True)
+    params = WikiParameters(
+        repo=".",
+        root=".",
+        conversion_type="text",
+        version="2",
+        verbose=True,
+    )
+    base = WikiBase(params)
     base.log()  # Always log before doing anything else
     base.test()
-    result = base.run(["echo", "hello,", " world!"])
+    result = base.run(["echo", "hello,", "world!"])
     print(result.stdout.strip())
     base.clone()
