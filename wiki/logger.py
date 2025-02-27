@@ -12,7 +12,7 @@ Usage:
 import logging
 
 
-class Logger:
+class WikiLogger:
     def __init__(self, cls_name: str, verbose: bool):
         """
         Initialize a Logger instance.
