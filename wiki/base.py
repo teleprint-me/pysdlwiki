@@ -11,13 +11,11 @@ import shutil
 import subprocess
 from typing import Any, List
 
-from wiki.logger import WikiLogger
+from wiki.logger import AutoLogger
 
 
-class WikiBase(WikiLogger):
+class WikiBase:
     def __init__(self, repo: str, root: str, _type: str, version: int, verbose: bool):
-        super().__init__(self.__class__.__name__, verbose)
-
         # Use the local path if specified
         if repo == ".":
             repo = "libsdl-org/sdlwiki"
@@ -31,6 +29,9 @@ class WikiBase(WikiLogger):
         self._type = _type  # The type of conversion process, e.g. text, pdf, man
         self._version = str(version)  # The version of the docs, e.g. 2 or 3
         self._verbose = verbose  # Enable debug info
+
+        # Automate Logger config and instance creation
+        self.logger = AutoLogger(self.__class__.__name__, verbose)
 
     @property
     def REPO_PATH(self) -> pathlib.Path:
