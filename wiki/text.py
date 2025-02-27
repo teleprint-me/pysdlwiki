@@ -3,19 +3,17 @@ Copyright © 2023 Austin Berrio
 Module: wiki.text
 Description:
     Converts the SDL Wiki from HTML to Markdown, if applicable, otherwise sanitizes existing Markdown.
-    This is a prerequisite step for all other stages in the pipeline.
+    Outputs processed files to a separate directory to preserve the original files.
 
 Pipeline Overview:
     All steps require: TEXT -> Normalize -> Sanitize
     There are three possible scenarios:
-        1. HTML (Optional) -> TEXT -> Concatenate all TEXT files into a single TEXT file.
+        1. HTML (Optional) -> TEXT -> Concatenate TEXT files.
         2. TEXT -> Concatenate -> Generate a PDF from the concatenated file
         3. TEXT -> Generate a MAN page from each TEXT file
 
 Caveats:
-    - This class modifies files in place and is destructive as a result.
-    - The repository maintained by libsdl-org automates text generation and makes the HTML available as an option.
-    - To keep this simple, the initial implementation is single-threaded but may require multi-threading for performance.
+    - The initial implementation is single-threaded but may require multi-threading for performance.
     - This class is highly sensitive, and even minor changes can cause unintended ripple effects.
 """
 
@@ -34,7 +32,16 @@ class WikiHTMLToText(WikiBase):
         super().__init__(params)
 
     @property
-    def TEXT_FILE(self) -> pathlib.Path:
+    def OUTPUT_DIR(self) -> pathlib.Path:
+        """
+        Directory where processed files are saved to preserve originals.
+        """
+        output_dir = self.params.TEXT_PATH / "processed"
+        output_dir.mkdir(parents=True, exist_ok=True)
+        return output_dir
+
+    @property
+    def OUTPUT_FILE(self) -> pathlib.Path:
         return self.params.TEXT_PATH / f"SDL-Wiki-v{self.params.version}.md"
 
     def sanitize(self, text: str) -> str:
@@ -82,6 +89,7 @@ class WikiHTMLToText(WikiBase):
     def convert(self) -> None:
         """
         Converts HTML files to Markdown and sanitizes existing Markdown files.
+        Outputs to a separate directory to preserve original files.
         """
         self.logger.info("Converting HTML to Markdown...")
         for version_dir in self.params.VERSION_PATH:
@@ -99,14 +107,20 @@ class WikiHTMLToText(WikiBase):
     def _process_file(self, root: str, file: str) -> None:
         """
         Processes a single file: converts HTML to Markdown or sanitizes existing Markdown.
+        Saves processed files in the output directory to preserve the originals.
         """
         file_path = pathlib.Path(root) / file
+        relative_path = file_path.relative_to(self.params.REPO_PATH)
+        output_file = self.OUTPUT_DIR / relative_path.with_suffix(".md")
+        output_file.parent.mkdir(parents=True, exist_ok=True)
+
         markdown = None
         if file.endswith(".html"):
             markdown = self.html2text(file_path)
         elif file.endswith(".md"):
             markdown = file_path.read_text(encoding="utf-8")
 
+        # File is unsupported
         if markdown is None:
             self.logger.warning(f"Skipping unsupported file: {file}")
             return
@@ -115,9 +129,9 @@ class WikiHTMLToText(WikiBase):
         markdown = self.normalize(markdown)
         markdown = self.sanitize(markdown)
 
-        # Write the processed content back to file
-        text_file = file_path.with_suffix(".md")
-        text_file.write_text(markdown + "\n", encoding="utf-8")
+        # Write the processed content to the output directory
+        output_file.write_text(markdown + "\n", encoding="utf-8")
+        self.logger.debug(f"Processed {file_path} -> {output_file}")
 
     def concatenate(self) -> None:
         """
@@ -130,10 +144,10 @@ class WikiHTMLToText(WikiBase):
                 for file in sorted(files):
                     if file.endswith(".md"):
                         text_file = pathlib.Path(root) / file
-                        self.logger.debug(f"Adding {text_file} to {self.TEXT_FILE}")
+                        self.logger.debug(f"Adding {text_file} to {self.OUTPUT_FILE}")
                         text_body += text_file.read_text(encoding="utf-8") + "\n"
-        self.TEXT_FILE.write_text(text_body, encoding="utf-8")
-        self.logger.info(f"Combined Markdown saved as {self.TEXT_FILE}")
+        self.OUTPUT_FILE.write_text(text_body, encoding="utf-8")
+        self.logger.info(f"Combined Markdown saved as {self.OUTPUT_FILE}")
 
 
 if __name__ == "__main__":
