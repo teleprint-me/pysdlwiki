@@ -14,7 +14,7 @@ from typing import IO, Any, List
 from wiki.logger import Logger
 
 
-class BaseConverter(Logger):
+class WikiBase(Logger):
     def __init__(self, repo_path: str, _type: str, version: int, verbose: bool):
         super().__init__(self.__class__.__name__, verbose)
 
@@ -113,8 +113,9 @@ if __name__ == "__main__":
     # Set verbosity to off for now
     # Use text mode
     # Look for v2 related docs
-    base = BaseConverter(repo_path=".", _type="text", version="2", verbose=True)
+    base = WikiBase(repo_path=".", _type="text", version="2", verbose=True)
 
     base.log()  # Always log before doing anything else
     base.test()
-    base.run(["echo", "hello,", " world!"])
+    result = base.run(["echo", "hello,", " world!"])
+    print(result.stdout.strip())

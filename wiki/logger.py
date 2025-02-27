@@ -4,7 +4,7 @@ Copyright © 2023 Austin Berrio
 Module: wiki.logger
 Description: A simple parent class for child classes to inherit from.
 Usage:
-    class SDLWikiBaseConverter(Logger):
+    class WikiBase(Logger):
         def __init__(self, repo_path: str, type: str, version: int, verbose: bool):
             super().__init__(self.__class__.__name__, verbose)
 """
