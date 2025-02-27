@@ -16,9 +16,9 @@ from wiki.text import WikiHTMLToText
 class SDLWikiConverter(WikiBase):
     def __init__(self, params: WikiParameters):
         super().__init__(params)
-        self.text = WikiHTMLToText(args)
-        self.pdf = WikiTextToPDF(args)
-        self.man = WikiTextToMan(args)
+        self.text = WikiHTMLToText(params)
+        self.pdf = WikiTextToPDF(params)
+        self.man = WikiTextToMan(params)
 
 
 def parse_args() -> argparse.Namespace:
@@ -29,7 +29,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--type",
         choices=["text", "pdf", "man"],
-        default="pdf",
+        default="text",
         help="Output format type. 'text' concatenates all Markdown files, 'pdf' generates a PDF document, and 'man' generates a Unix man page.",
     )
     parser.add_argument(
@@ -44,7 +44,15 @@ def parse_args() -> argparse.Namespace:
 if __name__ == "__main__":
     args = parse_args()
 
-    sdl_wiki = SDLWikiConverter(args)
+    params = WikiParameters(
+        repo=".",  # Defaults to "libsdl-org/sdlwiki"
+        root=".",  # Defaults to pathlib.Path.cwd()
+        conversion_type=args.type,
+        version=args.version,
+        verbose=args.verbose,
+    )
+
+    sdl_wiki = SDLWikiConverter(params)
     sdl_wiki.log()
     sdl_wiki.test()
     sdl_wiki.clone()
@@ -56,7 +64,5 @@ if __name__ == "__main__":
     elif args.type == "pdf":
         sdl_wiki.text.concatenate()
         sdl_wiki.pdf.convert()
-    elif args.type == "man":
-        sdl_wiki.man.convert()
     elif args.type == "man":
         sdl_wiki.man.convert()
