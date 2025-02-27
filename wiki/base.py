@@ -24,16 +24,8 @@ class WikiBase:
         os_info = {
             "OS Name": platform.system(),
             "Platform Release": platform.release(),
-            "Conversion Path": self.params.ROOT_PATH,
-            "Conversion Type": self.params.conversion_type,
-            "Conversion Version": self.params.version,
-            "Repository Path": self.params.REPO_PATH,
-            "Version Paths": self.params.VERSION_PATH,
-            "Text Path": self.params.TEXT_PATH,
-            "PDF Path": self.params.PDF_PATH,
-            "Man Path": self.params.MAN_PATH,
         }
-
+        os_info.update(self.params.as_dict())
         for key, value in os_info.items():
             self.logger.debug(f"{key}: {value}")
 
