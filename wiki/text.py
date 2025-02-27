@@ -31,19 +31,6 @@ class WikiHTMLToText(WikiBase):
     def __init__(self, params: WikiParameters):
         super().__init__(params)
 
-    @property
-    def OUTPUT_DIR(self) -> pathlib.Path:
-        """
-        Directory where processed files are saved to preserve originals.
-        """
-        output_dir = self.params.TEXT_PATH / "processed"
-        output_dir.mkdir(parents=True, exist_ok=True)
-        return output_dir
-
-    @property
-    def OUTPUT_FILE(self) -> pathlib.Path:
-        return self.params.TEXT_PATH / f"SDL-Wiki-v{self.params.version}.md"
-
     def sanitize(self, text: str) -> str:
         """
         Sanitizes Markdown text by applying various regex patterns to remove or replace unwanted content.
@@ -92,7 +79,7 @@ class WikiHTMLToText(WikiBase):
         Outputs to a separate directory to preserve original files.
         """
         self.logger.info("Converting HTML to Markdown...")
-        for version_dir in self.params.VERSION_PATH:
+        for version_dir in self.params.VERSION_DIRS:
             self._process_version_dir(version_dir)
         self.logger.info("HTML to Markdown conversion completed.")
 
@@ -111,7 +98,7 @@ class WikiHTMLToText(WikiBase):
         """
         file_path = pathlib.Path(root) / file
         relative_path = file_path.relative_to(self.params.REPO_PATH)
-        output_file = self.OUTPUT_DIR / relative_path.with_suffix(".md")
+        output_file = self.params.IR_DIR / relative_path.with_suffix(".md")
         output_file.parent.mkdir(parents=True, exist_ok=True)
 
         markdown = None
@@ -139,15 +126,15 @@ class WikiHTMLToText(WikiBase):
         """
         self.logger.info("Concatenating Markdown files...")
         text_body = ""
-        for version in self.params.VERSION_PATH:
+        for version in self.params.IR_VERSION_DIRS:
             for root, _, files in os.walk(version):
                 for file in sorted(files):
                     if file.endswith(".md"):
                         text_file = pathlib.Path(root) / file
-                        self.logger.debug(f"Adding {text_file} to {self.OUTPUT_FILE}")
+                        self.logger.debug(f"Adding {text_file} to {self.params.TEXT_OUTPUT_FILE}")
                         text_body += text_file.read_text(encoding="utf-8") + "\n"
-        self.OUTPUT_FILE.write_text(text_body, encoding="utf-8")
-        self.logger.info(f"Combined Markdown saved as {self.OUTPUT_FILE}")
+        self.params.TEXT_OUTPUT_FILE.write_text(text_body, encoding="utf-8")
+        self.logger.info(f"Combined Markdown saved as {self.params.TEXT_OUTPUT_FILE}")
 
 
 if __name__ == "__main__":
