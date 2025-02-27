@@ -13,7 +13,7 @@ from wiki.base import WikiBase
 from wiki.params import WikiParameters
 
 
-class SDLWikiTextToMan(WikiBase):
+class WikiTextToMan(WikiBase):
     def __init__(self, params: WikiParameters):
         super().__init__(params)
 
