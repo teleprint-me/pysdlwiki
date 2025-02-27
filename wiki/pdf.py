@@ -15,8 +15,6 @@ Caveats:
       it could be threaded, but would fail to preserve paging.
 """
 
-import pathlib
-
 from wiki.base import WikiBase
 from wiki.params import WikiParameters
 
@@ -25,21 +23,15 @@ class WikiTextToPDF(WikiBase):
     def __init__(self, params: WikiParameters):
         super().__init__(params)
 
-    @property
-    def INPUT_FILE(self) -> pathlib.Path:
-        return self.params.TEXT_PATH / f"SDL-Wiki-v{self.params.version}.md"
-
-    @property
-    def OUTPUT_FILE(self) -> pathlib.Path:
-        return self.params.PDF_PATH / f"SDL-Wiki-v{self.params.version}.pdf"
-
     def convert(self) -> None:
-        self.logger.info(f"Converting {self.INPUT_FILE} to {self.OUTPUT_FILE}...")
+        self.logger.info(
+            f"Converting {self.params.TEXT_OUTPUT_FILE} to {self.params.PDF_OUTPUT_FILE}..."
+        )
         args = [
             "pandoc",
-            str(self.INPUT_FILE),
+            str(self.params.TEXT_OUTPUT_FILE),
             "-o",
-            str(self.OUTPUT_FILE),
+            str(self.params.PDF_OUTPUT_FILE),
             "--pdf-engine=xelatex",  # Convert markdown to tex
             "--from",
             "markdown-raw_tex",  # Preserve pre-processed text
@@ -61,4 +53,28 @@ class WikiTextToPDF(WikiBase):
             "linkcolor=blue",
         ]
         self.run(args)
-        self.logger.info(f"PDF saved as {self.OUTPUT_FILE}")
+        self.logger.info(f"PDF saved as {self.params.PDF_OUTPUT_FILE}")
+
+
+if __name__ == "__main__":
+    from wiki.text import WikiHTMLToText
+
+    params = WikiParameters(
+        repo=".",
+        root=".",
+        conversion_type="text",
+        version="2",
+        verbose=True,
+    )
+
+    # Pre-process text and output intermediary representations
+    text = WikiHTMLToText(params)
+    text.log()  # Log system info and parameters before starting
+    text.test()
+    text.clone()  # Ensure the repo exists
+    text.convert()
+    text.concatenate()
+
+    # Post-process text and output PDF file
+    pdf = WikiTextToPDF(params)
+    pdf.convert()
