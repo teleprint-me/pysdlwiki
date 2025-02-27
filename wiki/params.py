@@ -1,6 +1,19 @@
 """
+Copyright © 2023 Austin Berrio
 Module: wiki.params
-Description: A class for storing parameters related to the wiki conversion process.
+Description:
+    A class for managing parameters and file paths related to the SDL Wiki conversion process.
+    Centralized configuration and path management for the SDL Wiki conversion pipeline.
+
+Path Flow:
+    - Input Source: REPO_PATH/<version_dir>/<file>
+    - Preprocessed Output (and next input): PREPROCESS_DIR/<version_dir>/<processed_file>
+    - Final Output: OUTPUT_DIR/<conversion_type>/<final_file>
+
+Design Rationale:
+    - REPO_PATH is the original source input.
+    - PREPROCESS_DIR is both the target output and the next input for further processing.
+    - OUTPUT_DIR is the final output destination, organized by conversion type.
 """
 
 import dataclasses
@@ -8,8 +21,6 @@ import pathlib
 from typing import Literal
 
 
-# NOTE: Managing the input source files and separating them from the preprocessed text
-# files seems to be the most complicated aspect of all of this at the moment.
 @dataclasses.dataclass
 class WikiParameters:
     repo: str  # The repository path to clone, sync, or reference
@@ -35,64 +46,85 @@ class WikiParameters:
         if self.version not in {"2", "3"}:
             raise ValueError(f"Invalid version: {self.version}")
 
-    # This is the repository root path
+    # ========== Core Directory Structure ========== #
+
+    @property
+    def ROOT_PATH(self) -> pathlib.Path:
+        """The current working directory for the conversion process."""
+        return pathlib.Path(self.root)
+
     @property
     def REPO_PATH(self) -> pathlib.Path:
+        """The root path of the cloned SDL Wiki repository."""
         return pathlib.Path(self.repo)
 
-    # This represents the original source directory
     @property
-    def VERSION_PATH(self) -> list[pathlib.Path]:
-        # Dynamically generate paths based on version
+    def VERSION_DIRS(self) -> list[pathlib.Path]:
+        """
+        The original source directories for the selected version.
+        These represent the unprocessed input directories.
+        """
         prefix = f"SDL{self.version}"
         submodules = ["", "_image", "_mixer", "_net", "_ttf"]
         return [self.REPO_PATH / f"{prefix}{sub}" for sub in submodules]
 
-    # This is the current working directory
-    @property
-    def ROOT_PATH(self) -> pathlib.Path:
-        return pathlib.Path(self.root)
+    # ========== Output Directories and Files ========== #
 
-    # This represents the target destination directory
     @property
-    def TEXT_ROOT_DIR(self) -> pathlib.Path:
-        return self._ensure_directory(self.ROOT_PATH / "text")
+    def OUTPUT_DIR(self) -> pathlib.Path:
+        """Root directory for all final output files."""
+        return self._ensure_directory(self.ROOT_PATH / "output")
 
-    # This represents the processed target directory
     @property
     def TEXT_OUTPUT_DIR(self) -> pathlib.Path:
-        """
-        Directory where processed files are saved to preserve originals.
-        """
-        return self._ensure_directory(self.params.TEXT_ROOT_DIR / "processed")
+        """Directory for storing concatenated Markdown files."""
+        return self._ensure_directory(self.OUTPUT_DIR / "text")
 
-    # This represents the processed source directory
     @property
-    def TEXT_INPUT_DIR(self) -> list[pathlib.Path]:
-        # This is used as input to produce the output TEXT file
-        prefix = f"SDL{self.params.version}"
+    def PDF_OUTPUT_DIR(self) -> pathlib.Path:
+        """Directory for storing generated PDF files."""
+        return self._ensure_directory(self.OUTPUT_DIR / "pdf")
+
+    @property
+    def MAN_OUTPUT_DIR(self) -> pathlib.Path:
+        """Directory for storing generated MAN pages."""
+        return self._ensure_directory(self.OUTPUT_DIR / "man")
+
+    # ========== Preprocessing Directories ========== #
+
+    @property
+    def PREPROCESS_DIR(self) -> pathlib.Path:
+        """
+        Root directory for all preprocessed files.
+        This keeps processed files separate from the source and output directories.
+        """
+        return self._ensure_directory(self.TEXT_OUTPUT_DIR / "processed")
+
+    @property
+    def INTERMEDIATE_DIRS(self) -> list[pathlib.Path]:
+        """
+        Directories containing preprocessed input files for further processing.
+        Mirrors the structure of VERSION_DIRS.
+        """
+        prefix = f"SDL{self.version}"
         submodules = ["", "_image", "_mixer", "_net", "_ttf"]
-        return [self.OUTPUT_DIR / f"{prefix}{sub}" for sub in submodules]
+        return [self.PREPROCESS_DIR / f"{prefix}{sub}" for sub in submodules]
 
-    # This is the product of the concatenated processed source directory
-    @property
-    def TEXT_FILE(self) -> pathlib.Path:
-        # This is used to produce a concatenated TEXT file
-        # and is used as input to produce the PDF file
-        return self.params.TEXT_ROOT_DIR / f"SDL-Wiki-v{self.params.version}.md"
+    # ========== Final Output Files ========== #
 
-    # This is the target output path for the PDF file. The TEXT_FILE is a prerequisite
-    # since it is used as input to generate the output PDF file using pandoc.
     @property
-    def PDF_PATH(self) -> pathlib.Path:
-        return self._ensure_directory(self.ROOT_PATH / "pdf")
+    def TEXT_OUTPUT_FILE(self) -> pathlib.Path:
+        """
+        Concatenated Markdown file, used as input for generating PDFs.
+        """
+        return self.TEXT_OUTPUT_DIR / f"SDL-Wiki-v{self.version}.md"
 
-    # This is the target output path for all MAN pages. The TEXT_INPUT_DIR is a
-    # prerequisite since each preprocessed markdown file is used as input to generate
-    # each output manual page using pandoc.
     @property
-    def MAN_PATH(self) -> pathlib.Path:
-        return self._ensure_directory(self.ROOT_PATH / "man")
+    def PDF_OUTPUT_FILE(self) -> pathlib.Path:
+        """Final PDF file generated from the concatenated Markdown."""
+        return self.PDF_OUTPUT_DIR / f"SDL-Wiki-v{self.version}.pdf"
+
+    # ========== Utilities ========== #
 
     def _ensure_directory(self, path: pathlib.Path) -> pathlib.Path:
         """Helper to create directory if it doesn't exist."""
