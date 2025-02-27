@@ -4,7 +4,6 @@ Module: wiki.base
 Description: Base class for converting SDL Wiki from HTML to a selected output format.
 """
 
-import pathlib
 import platform
 import shutil
 import subprocess
@@ -20,10 +19,6 @@ class WikiBase:
     def __init__(self, params: WikiParameters):
         self.params = params
         self.logger = AutoLogger.create(self.__class__.__name__, params.verbose)
-
-    @property
-    def PDF_FILE(self) -> pathlib.Path:
-        return self.PDF_PATH / f"SDL-Wiki-v{self.params.version}.pdf"
 
     def log(self) -> None:
         os_info = {
