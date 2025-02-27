@@ -7,18 +7,23 @@ Description:
 
 Path Flow:
     - Input Source: REPO_PATH/<version_dir>/<file>
-    - Preprocessed Output (and next input): PREPROCESS_DIR/<version_dir>/<processed_file>
-    - Final Output: OUTPUT_DIR/<conversion_type>/<final_file>
+    - Intermediate Representation (IR): OUTPUT_DIR/text/<ir_dir>/<version_dir>/<ir_file>
+    - Final Outputs:
+        - TEXT: OUTPUT_DIR/text/SDL-Wiki-v{version}.md
+        - PDF: OUTPUT_DIR/pdf/SDL-Wiki-v{version}.pdf
+        - MAN Pages: OUTPUT_DIR/man/<man_file>
 
 Design Rationale:
     - REPO_PATH is the original source input.
-    - PREPROCESS_DIR is both the target output and the next input for further processing.
     - OUTPUT_DIR is the final output destination, organized by conversion type.
+    - IR_DIR is both the target output and the source input for further processing.
+    - TEXT_OUTPUT_FILE is the final concatenated Markdown file.
+    - PDF_OUTPUT_FILE is the final output PDF file.
 """
 
 import dataclasses
 import pathlib
-from typing import Literal
+from typing import Any, Dict, List, Literal
 
 
 @dataclasses.dataclass
@@ -59,7 +64,7 @@ class WikiParameters:
         return pathlib.Path(self.repo)
 
     @property
-    def VERSION_DIRS(self) -> list[pathlib.Path]:
+    def VERSION_DIRS(self) -> List[pathlib.Path]:
         """
         The original source directories for the selected version.
         These represent the unprocessed input directories.
@@ -90,25 +95,25 @@ class WikiParameters:
         """Directory for storing generated MAN pages."""
         return self._ensure_directory(self.OUTPUT_DIR / "man")
 
-    # ========== Preprocessing Directories ========== #
+    # ========== Intermediate Representation (IR) ========== #
 
     @property
-    def PREPROCESS_DIR(self) -> pathlib.Path:
+    def IR_DIR(self) -> pathlib.Path:
         """
-        Root directory for all preprocessed files.
-        This keeps processed files separate from the source and output directories.
+        Intermediate Representation (IR) directory for all processed files.
+        These are sanitized and normalized Markdown files, ready for further processing.
         """
-        return self._ensure_directory(self.TEXT_OUTPUT_DIR / "processed")
+        return self._ensure_directory(self.TEXT_OUTPUT_DIR / "intermediate")
 
     @property
-    def INTERMEDIATE_DIRS(self) -> list[pathlib.Path]:
+    def IR_VERSION_DIRS(self) -> list[pathlib.Path]:
         """
-        Directories containing preprocessed input files for further processing.
+        Directories containing IR files for further processing.
         Mirrors the structure of VERSION_DIRS.
         """
         prefix = f"SDL{self.version}"
         submodules = ["", "_image", "_mixer", "_net", "_ttf"]
-        return [self.PREPROCESS_DIR / f"{prefix}{sub}" for sub in submodules]
+        return [self.IR_DIR / f"{prefix}{sub}" for sub in submodules]
 
     # ========== Final Output Files ========== #
 
@@ -130,3 +135,7 @@ class WikiParameters:
         """Helper to create directory if it doesn't exist."""
         path.mkdir(parents=True, exist_ok=True)
         return path
+
+    def as_dict(self) -> Dict[str, Any]:
+        """Returns a dictionary representation of the defined parameters."""
+        return {k: v for k, v in self.__dict__.items() if not k.startswith("_")}
