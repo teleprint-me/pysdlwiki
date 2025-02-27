@@ -9,7 +9,7 @@ import pathlib
 import platform
 import shutil
 import subprocess
-from typing import IO, Any, List
+from typing import Any, List
 
 from wiki.logger import WikiLogger
 
