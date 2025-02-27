@@ -22,10 +22,6 @@ class WikiBase:
         self.logger = AutoLogger.create(self.__class__.__name__, params.verbose)
 
     @property
-    def TEXT_FILE(self) -> pathlib.Path:
-        return self.TEXT_PATH / f"SDL-Wiki-v{self.params.version}.md"
-
-    @property
     def PDF_FILE(self) -> pathlib.Path:
         return self.PDF_PATH / f"SDL-Wiki-v{self.params.version}.pdf"
 
@@ -71,7 +67,7 @@ class WikiBase:
             self.logger.error(f"Return code: {e.returncode}")
             self.logger.error(f"Output: {e.stdout}")
             self.logger.error(f"Error: {e.stderr}")
-            exit(1)
+            raise RuntimeError(f"Command failed: {' '.join(args)}") from e
 
     def clone(self) -> None:
         repo_dir = self.params.REPO_PATH
