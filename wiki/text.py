@@ -138,10 +138,18 @@ class WikiHTMLToText(WikiBase):
 
 
 if __name__ == "__main__":
-    params = WikiParameters(repo=".", root=".", conversion_type="text", version="2", verbose=True)
-    converter = WikiHTMLToText(params)
-    converter.log()  # Log system info and parameters before starting
-    converter.test()
-    converter.clone()  # Ensure the repo exists
-    converter.convert()
-    converter.concatenate()
+    params = WikiParameters(
+        repo=".",
+        root=".",
+        conversion_type="text",
+        version="2",
+        verbose=True,
+    )
+
+    # Pre-process text and output intermediary representations
+    text = WikiHTMLToText(params)
+    text.log()  # Log system info and parameters before starting
+    text.test()
+    text.clone()  # Ensure the repo exists
+    text.convert()
+    text.concatenate()
