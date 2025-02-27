@@ -1,7 +1,8 @@
 # Local paths
-/man
-/pdf
-/text
+/libsdl-org
+/output
+
+# Visual Studio Code
 .vscode
 
 # Byte-compiled / optimized / DLL files
