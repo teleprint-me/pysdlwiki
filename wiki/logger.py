@@ -6,7 +6,7 @@ Usage:
 
 class WikiBase:
     def __init__(self, verbose):
-        self.logger = AutoLogger(self.__class__.__name__, verbose)
+        self.logger = AutoLogger.create(self.__class__.__name__, verbose)
 
 NOTE: I think thread-locking here is overkill, but I'm willing to give it a shot.
 It might prove useful down the line and I'd rather have it be available than not.
@@ -25,7 +25,8 @@ class AutoLogger:
 
     lock = Lock()
 
-    def __call__(self, cls_name: str, verbose: bool) -> logging.Logger:
+    @classmethod
+    def create(cls, cls_name: str, verbose: bool) -> logging.Logger:
         """
         Initialize and return a Logger instance.
 
@@ -38,7 +39,7 @@ class AutoLogger:
         _logger = logging.getLogger(cls_name)
 
         # Thread-safe check to avoid duplicate handlers
-        with self.lock:
+        with cls.lock:
             if _logger.level != _level:
                 _logger.setLevel(_level)
 
