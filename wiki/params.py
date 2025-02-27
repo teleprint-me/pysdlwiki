@@ -4,7 +4,6 @@ Description: A class for storing parameters related to the wiki conversion proce
 """
 
 import dataclasses
-import os
 import pathlib
 from typing import Literal
 
@@ -24,7 +23,7 @@ class WikiParameters:
 
         # Default to local path if specified
         if self.root == ".":
-            self.root = os.getcwd()
+            self.root = pathlib.Path.cwd()
 
         # Validate conversion type
         if self.conversion_type not in {"text", "pdf", "man"}:
@@ -36,34 +35,32 @@ class WikiParameters:
 
     @property
     def REPO_PATH(self) -> pathlib.Path:
-        return pathlib.Path(self.params.repo)
+        return pathlib.Path(self.repo)
 
     @property
     def VERSION_PATH(self) -> list[pathlib.Path]:
-        version_map = {
-            "2": ["SDL2", "SDL2_image", "SDL2_mixer", "SDL2_net", "SDL2_ttf"],
-            "3": ["SDL3", "SDL3_image", "SDL3_mixer", "SDL3_net", "SDL3_ttf"],
-        }
-        return [self.REPO_PATH / v for v in version_map[self.params.version]]
+        # Dynamically generate paths based on version
+        prefix = f"SDL{self.version}"
+        submodules = ["", "_image", "_mixer", "_net", "_ttf"]
+        return [self.REPO_PATH / f"{prefix}{sub}" for sub in submodules]
 
     @property
     def ROOT_PATH(self) -> pathlib.Path:
-        return pathlib.Path(self._root)
+        return pathlib.Path(self.root)
 
     @property
     def TEXT_PATH(self) -> pathlib.Path:
-        text_dir = self.ROOT_PATH / "text"
-        text_dir.mkdir(parents=True, exist_ok=True)
-        return text_dir
+        return self._ensure_directory(self.ROOT_PATH / "text")
 
     @property
     def PDF_PATH(self) -> pathlib.Path:
-        pdf_dir = self.ROOT_PATH / "pdf"
-        pdf_dir.mkdir(parents=True, exist_ok=True)
-        return pdf_dir
+        return self._ensure_directory(self.ROOT_PATH / "pdf")
 
     @property
     def MAN_PATH(self) -> pathlib.Path:
-        man_dir = self.ROOT_PATH / "man"
-        man_dir.mkdir(parents=True, exist_ok=True)
-        return man_dir
+        return self._ensure_directory(self.ROOT_PATH / "man")
+
+    def _ensure_directory(self, path: pathlib.Path) -> pathlib.Path:
+        """Helper to create directory if it doesn't exist."""
+        path.mkdir(parents=True, exist_ok=True)
+        return path
