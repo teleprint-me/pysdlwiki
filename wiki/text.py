@@ -127,7 +127,7 @@ class WikiHTMLToText(WikiBase):
             markdown = file_path.read_text(encoding="utf-8")
 
         if markdown is None:
-            self.logger.warning(f"Skipping unsupported file: {file_path}")
+            self.logger.debug(f"Skipping unsupported file: {file_path}")
             return
 
         # Normalize and sanitize the Markdown content
