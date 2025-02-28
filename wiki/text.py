@@ -6,11 +6,12 @@ Description:
     Outputs processed files to a separate directory to preserve the original files.
 
 Pipeline Overview:
-    All steps require: TEXT -> Normalize -> Sanitize
+    All steps require: TEXT: HTML | TEXT -> Normalize -> Sanitize -> TEXT
     There are three possible scenarios:
-        1. HTML (Optional) -> TEXT -> Concatenate TEXT files.
-        2. TEXT -> Concatenate -> Generate a PDF from the concatenated file
-        3. TEXT -> Generate a MAN page from each TEXT file
+        1. TEXT -> Concatenate
+        2. TEXT -> Concatenate -> PDF
+        3. TEXT -> MAN page for each TEXT file
+    The output for each step becomes the input to the next step in the pipeline.
 
 Caveats:
     - This class is highly sensitive, and even minor changes can cause unintended ripple effects.
