@@ -22,6 +22,7 @@ import unicodedata
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List
 
+import html2text
 import regex as re
 
 from wiki.base import WikiBase
@@ -60,19 +61,23 @@ class WikiHTMLToText(WikiBase):
         """
         return unicodedata.normalize("NFKC", text).strip()
 
-    def html2text(self, html_file: pathlib.Path) -> str:
+    def html_to_text(self, html_file: pathlib.Path) -> str:
         """
-        Converts an HTML file to Markdown using html2text.
+        Converts an HTML file to Markdown using the html2text Python API.
         """
-        self.logger.debug(f"Converting {html_file} to Markdown")
-        args = [
-            "html2text",
-            "--no-wrap-links",
-            "--wrap-tables",
-            "--images-to-alt",
-            str(html_file),
-        ]
-        return self.run(args).stdout
+        self.logger.debug(f"Converting {html_file} to Markdown using html2text API")
+
+        with open(html_file, "r", encoding="utf-8") as source:
+            html_content = source.read()
+
+        converter = html2text.HTML2Text()
+        converter.wrap_links = False
+        converter.wrap_tables = True
+        converter.images_to_alt = True
+        converter.body_width = 0
+
+        markdown = converter.handle(html_content)
+        return markdown
 
     def convert(self) -> None:
         """
@@ -111,7 +116,7 @@ class WikiHTMLToText(WikiBase):
 
         markdown = None
         if file_path.suffix == ".html":
-            markdown = self.html2text(file_path)
+            markdown = self.html_to_text(file_path)
         elif file_path.suffix == ".md":
             markdown = file_path.read_text(encoding="utf-8")
 
