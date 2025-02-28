@@ -34,15 +34,20 @@ class WikiTextToMan(WikiBase):
         Extracts metadata for Pandoc by seeking out the first line that starts with a # character.
         """
         title = None
-        description = "SDL Documentation"
+        description = None
         with open(file_path, "r", encoding="utf-8") as source:
             for line in source:
                 if line.startswith("# "):
                     title = line[2:].strip()
+                    continue
+                if title and line.strip():
+                    description = line.strip()
                     break
         return [
             "--metadata",
             f"title={title}",
+            "--metadata",
+            f"name={title}",
             "--metadata",
             f"description={description}",
             "--metadata",
