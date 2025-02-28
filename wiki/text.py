@@ -85,8 +85,10 @@ class WikiHTMLToText(WikiBase):
         Converts HTML files to Markdown and sanitizes existing Markdown files in parallel.
         Outputs to the intermediate directory to preserve original files.
         """
-        self.logger.info("Starting parallel HTML to Markdown conversion...")
+        processed = 0
+        failed = 0
 
+        self.logger.info("Starting parallel HTML to Markdown conversion...")
         # Collect all files to be processed
         files_to_process: List[pathlib.Path] = []
         for version_dir in self.params.VERSION_DIRS:
@@ -101,9 +103,12 @@ class WikiHTMLToText(WikiBase):
             for future in as_completed(futures):
                 try:
                     future.result()
+                    processed += 1
                 except Exception as e:
                     self.logger.error(f"Error processing file: {e}")
+                    failed += 1
 
+        self.logger.info(f"Processed: {processed}, Failed: {failed}")
         self.logger.info("HTML to Markdown conversion completed in parallel.")
 
     def process_file(self, file_path: pathlib.Path) -> None:

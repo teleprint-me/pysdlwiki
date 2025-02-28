@@ -63,8 +63,10 @@ class WikiTextToMan(WikiBase):
         """
         Converts Markdown files to Man pages in parallel.
         """
-        self.logger.info("Starting parallel Markdown to Man page conversion...")
+        processed = 0
+        failed = 0
 
+        self.logger.info("Starting parallel Markdown to Man page conversion...")
         # Collect all files to be processed
         files_to_process: List[pathlib.Path] = []
         for version_dir in self.params.IR_VERSION_DIRS:
@@ -79,7 +81,10 @@ class WikiTextToMan(WikiBase):
             for future in as_completed(futures):
                 try:
                     future.result()
+                    processed += 1
                 except Exception as e:
                     self.logger.error(f"Error processing file: {e}")
+                    failed += 1
 
+        self.logger.info(f"Processed: {processed}, Failed: {failed}")
         self.logger.info(f"Man pages saved in {self.params.MAN_OUTPUT_DIR}")
