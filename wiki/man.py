@@ -5,8 +5,10 @@ Description:
 """
 
 import datetime
+import gzip
 import os
 import pathlib
+import shutil
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List
 
@@ -17,6 +19,15 @@ from wiki.params import WikiParameters
 class WikiTextToMan(WikiBase):
     def __init__(self, params: WikiParameters):
         super().__init__(params)
+
+    def compress_man_page(self, man_file: pathlib.Path) -> None:
+        """Compresses the Man page using gzip."""
+        compressed_file = man_file.with_suffix(".3.gz")
+        with open(man_file, "rb") as source:
+            with gzip.open(compressed_file, "wb") as target:
+                shutil.copyfileobj(source, target)
+        man_file.unlink()  # Remove the uncompressed file
+        self.logger.debug(f"Compressed {man_file} to {compressed_file}")
 
     def generate_meta_data(self, file_path: pathlib.Path) -> List[str]:
         """
@@ -45,7 +56,7 @@ class WikiTextToMan(WikiBase):
         """
         Converts a single Markdown file to a Man page using Pandoc.
         """
-        man_file = self.params.MAN_OUTPUT_DIR / md_file.with_suffix(".1").name
+        man_file = self.params.MAN_OUTPUT_DIR / md_file.with_suffix(".3").name
         metadata = self.generate_meta_data(md_file)
         self.logger.debug(f"Converting {md_file} to {man_file}")
         args = [
@@ -57,7 +68,16 @@ class WikiTextToMan(WikiBase):
             "-o",
             str(man_file),
         ] + metadata
-        self.run(args)
+
+        result = self.run(args)
+
+        # Log the stderr output in case of errors
+        if result.returncode != 0:
+            self.logger.error(f"Pandoc failed with error code {result.returncode}")
+            self.logger.error(result.stderr)
+        else:
+            self.compress_man_page(man_file)
+            self.logger.debug(f"Man page saved as {man_file}")
 
     def convert(self) -> None:
         """
