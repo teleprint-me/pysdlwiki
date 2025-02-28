@@ -13,13 +13,14 @@ Pipeline Overview:
         3. TEXT -> Generate a MAN page from each TEXT file
 
 Caveats:
-    - The initial implementation is single-threaded but may require multi-threading for performance.
     - This class is highly sensitive, and even minor changes can cause unintended ripple effects.
 """
 
 import os
 import pathlib
 import unicodedata
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import List
 
 import regex as re
 
@@ -75,48 +76,54 @@ class WikiHTMLToText(WikiBase):
 
     def convert(self) -> None:
         """
-        Converts HTML files to Markdown and sanitizes existing Markdown files.
-        Outputs to a separate directory to preserve original files.
+        Converts HTML files to Markdown and sanitizes existing Markdown files in parallel.
+        Outputs to the intermediate directory to preserve original files.
         """
-        self.logger.info("Converting HTML to Markdown...")
+        self.logger.info("Starting parallel HTML to Markdown conversion...")
+
+        # Collect all files to be processed
+        files_to_process: List[pathlib.Path] = []
         for version_dir in self.params.VERSION_DIRS:
-            self._process_version_dir(version_dir)
-        self.logger.info("HTML to Markdown conversion completed.")
+            for root, _, files in os.walk(version_dir):
+                for file in files:
+                    file_path = pathlib.Path(root) / file
+                    files_to_process.append(file_path)
 
-    def _process_version_dir(self, version_dir: pathlib.Path) -> None:
-        """
-        Processes all files in a version directory, converting or sanitizing Markdown as needed.
-        """
-        for root, _, files in os.walk(version_dir):
-            for file in files:
-                self._process_file(root, file)
+        # Use ThreadPoolExecutor for parallel processing
+        with ThreadPoolExecutor(max_workers=(os.cpu_count() or 4)) as executor:
+            futures = [executor.submit(self.process_file, file) for file in files_to_process]
+            for future in as_completed(futures):
+                try:
+                    future.result()
+                except Exception as e:
+                    self.logger.error(f"Error processing file: {e}")
 
-    def _process_file(self, root: str, file: str) -> None:
+        self.logger.info("HTML to Markdown conversion completed in parallel.")
+
+    def process_file(self, file_path: pathlib.Path) -> None:
         """
         Processes a single file: converts HTML to Markdown or sanitizes existing Markdown.
-        Saves processed files in the output directory to preserve the originals.
+        Saves processed files in the intermediate directory.
         """
-        file_path = pathlib.Path(root) / file
         relative_path = file_path.relative_to(self.params.REPO_PATH)
         output_file = self.params.IR_DIR / relative_path.with_suffix(".md")
         output_file.parent.mkdir(parents=True, exist_ok=True)
 
         markdown = None
-        if file.endswith(".html"):
+        if file_path.suffix == ".html":
             markdown = self.html2text(file_path)
-        elif file.endswith(".md"):
+        elif file_path.suffix == ".md":
             markdown = file_path.read_text(encoding="utf-8")
 
-        # File is unsupported
         if markdown is None:
-            self.logger.warning(f"Skipping unsupported file: {file}")
+            self.logger.warning(f"Skipping unsupported file: {file_path}")
             return
 
         # Normalize and sanitize the Markdown content
         markdown = self.normalize(markdown)
         markdown = self.sanitize(markdown)
 
-        # Write the processed content to the output directory
+        # Write the processed content to the IR directory
         output_file.write_text(markdown + "\n", encoding="utf-8")
         self.logger.debug(f"Processed {file_path} -> {output_file}")
 
